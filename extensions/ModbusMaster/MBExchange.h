@@ -331,6 +331,8 @@ class MBExchange:
 		typedef std::list<IOBase> ThresholdList;
 		ThresholdList thrlist;
 
+		bool defaultMBinitOK; // флаг определяющий нужно ли ждать "первого обмена" или при запуске сохранять в SM значение default
+		
 	 private:
 		MBExchange();
 

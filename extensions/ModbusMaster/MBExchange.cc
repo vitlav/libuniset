@@ -70,7 +70,7 @@ pollActivated(false)
 
 	aftersend_pause = conf->getArgPInt("--" + prefix + "-aftersend-pause",it.getProp("aftersend_pause"),0);
 
-
+    defaultMBinitOK = conf->getArgPInt("--" + prefix + "-default-mbinit-ok", it.getProp("default_mbinitOK"), 0);
 	noQueryOptimization = conf->getArgInt("--" + prefix + "-no-query-optimization",it.getProp("no_query_optimization"));
 
 	mbregFromID = conf->getArgInt("--" + prefix + "-reg-from-id",it.getProp("reg_from_id"));
@@ -874,10 +874,13 @@ bool MBExchange::pollRTU( RTUDevice* dev, RegMap::iterator& it )
 		case ModbusRTU::fnReadInputRegisters:
 		{
 			ModbusRTU::ReadInputRetMessage ret = mb->read04(dev->mbaddr,p->mbreg,p->q_count);
-			for( int i=0; i<p->q_count; i++,it++ )
-				it->second->mbval = ret.data[i];
 
-			p->mb_initOK = true;
+			for( unsigned int i = 0; i < p->q_count; i++, it++ )
+			{
+				it->second->mbval = ret.data[i];
+				it->second->mb_initOK = true;
+			}
+
 			it--;
 		}
 		break;
@@ -885,9 +888,13 @@ bool MBExchange::pollRTU( RTUDevice* dev, RegMap::iterator& it )
 		case ModbusRTU::fnReadOutputRegisters:
 		{
 			ModbusRTU::ReadOutputRetMessage ret = mb->read03(dev->mbaddr,p->mbreg,p->q_count);
-			for( int i=0; i<p->q_count; i++,it++ )
+
+			for( unsigned int i = 0; i < p->q_count; i++, it++ )
+			{
 				it->second->mbval = ret.data[i];
-			p->mb_initOK = true;
+				it->second->mb_initOK = true;
+			}
+
 			it--;
 		}
 		break;
@@ -899,10 +906,14 @@ bool MBExchange::pollRTU( RTUDevice* dev, RegMap::iterator& it )
 			for( int i=0; i<ret.bcnt; i++ )
 			{
 				ModbusRTU::DataBits b(ret.data[i]);
-				for( int k=0;k<ModbusRTU::BitsPerByte && m<p->q_count; k++,it++,m++ )
+
+				for( unsigned int k = 0; k < ModbusRTU::BitsPerByte && m < p->q_count; k++, it++, m++ )
+				{
 					it->second->mbval = b[k];
+					it->second->mb_initOK = true;
+				}
 			}
-			p->mb_initOK = true;
+
 			it--;
 		}
 		break;
@@ -914,10 +925,14 @@ bool MBExchange::pollRTU( RTUDevice* dev, RegMap::iterator& it )
 			for( int i=0; i<ret.bcnt; i++ )
 			{
 				ModbusRTU::DataBits b(ret.data[i]);
-				for( int k=0;k<ModbusRTU::BitsPerByte && m<p->q_count; k++,it++,m++ )
+
+				for( unsigned int k = 0; k < ModbusRTU::BitsPerByte && m < p->q_count; k++, it++, m++ )
+				{
 					it->second->mbval = b[k] ? 1 : 0;
+					it->second->mb_initOK = true;
+				}
 			}
-			p->mb_initOK = true;
+
 			it--;
 		}
 		break;
@@ -1013,8 +1028,12 @@ bool MBExchange::pollRTU( RTUDevice* dev, RegMap::iterator& it )
 			}	
 
 			ModbusRTU::ForceCoilsMessage msg(dev->mbaddr,p->mbreg);
-			for( int i=0; i<p->q_count; i++,it++ )
+
+			for( unsigned i = 0; i < p->q_count; i++, it++ )
+			{
 				msg.addBit( (it->second->mbval ? true : false) );
+				it->second->mb_initOK = true;
+			}
 
 			it--;
 //			cerr << "*********** (write multiple): " << msg << endl;
@@ -1257,6 +1276,7 @@ void MBExchange::updateRSProperty( RSProperty* p, bool write_only )
 						IOBase::processingAsAI( p, (signed short)(r->mbval), shm, force );
 					}
 				}
+
 				return;
 			}
 			else if( p->vType == VTypes::vtUnsigned )
@@ -1288,6 +1308,7 @@ void MBExchange::updateRSProperty( RSProperty* p, bool write_only )
 						IOBase::processingAsAI( p, (unsigned short)r->mbval, shm, force );
 					}
 				}
+
 				return;
 			}
 			else if( p->vType == VTypes::vtByte )
@@ -1299,7 +1320,7 @@ void MBExchange::updateRSProperty( RSProperty* p, bool write_only )
 					return;
 				}
 
-				if( save && r->sm_initOK )
+				if( save )
 				{
 					  if( r->mb_initOK )
 					  {
@@ -1376,6 +1397,8 @@ void MBExchange::updateRSProperty( RSProperty* p, bool write_only )
 						VTypes::F4 f4(f);
 						for( int k=0; k<VTypes::F4::wsize(); k++, i++ )
 							i->second->mbval = f4.raw.v[k];
+
+						r->sm_initOK = true;
 					}
 				}
 				else
@@ -2263,10 +2286,8 @@ bool MBExchange::initItem( UniXML_iterator& it )
 	}
 	else
 	{
-		// Если это регистр для чтения, то сразу можно работать
-		// инициализировать не надо
-//		ri->mb_initOK = true;
-//		ri->sm_initOK = true;
+		ri->mb_initOK = defaultMBinitOK;
+		ri->sm_initOK = false;
 	}
 	
 
@@ -2288,8 +2309,9 @@ bool MBExchange::initItem( UniXML_iterator& it )
 			r->q_num=i+1;
 			r->q_count=1;
 			r->mbfunc = ri->mbfunc;
-	//		r->mb_initOK = true;
-	//		r->sm_initOK = true;
+			r->mb_initOK = defaultMBinitOK;
+			r->sm_initOK = false;
+
 			if( ModbusRTU::isWriteFunction(ri->mbfunc) )
 			{
 				// Если занимает несколько регистров, а указана функция записи "одного",
@@ -2649,6 +2671,7 @@ void MBExchange::sysCommand( UniSetTypes::SystemMessage *sm )
 				initOutput();
 			}
 
+			initValues();
 			updateSM();
 			askTimer(tmExchange,polltime);
 			break;
@@ -2671,6 +2694,7 @@ void MBExchange::sysCommand( UniSetTypes::SystemMessage *sm )
 
 			askSensors(UniversalIO::UIONotify);
 			initOutput();
+			initValues();
 
 			if( !force )
 			{
