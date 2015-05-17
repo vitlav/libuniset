@@ -8,6 +8,7 @@
 #include "IONotifyController.h"
 #include "UniSetObject_LT.h"
 #include "PassiveTimer.h"
+#include "DelayTimer.h"
 #include "Trigger.h"
 #include "Mutex.h"
 #include "Calibration.h"
@@ -143,15 +144,14 @@ class MBExchange:
 			resp_id(UniSetTypes::DefaultObjectId),
 			resp_state(false),
 			resp_invert(false),
-			resp_real(false),
-			resp_init(false),
+			numreply(0),
+			prev_numreply(0),
 			ask_every_reg(false),
 			mode_id(UniSetTypes::DefaultObjectId),
 			mode(emNone),
 			speed(ComPort::ComSpeed38400),
 			rtu(0)
 			{
-				resp_trTimeout.change(false);
 			}
 			
 			bool respnond;
@@ -162,12 +162,11 @@ class MBExchange:
 
 			UniSetTypes::ObjectId resp_id;
 			IOController::DIOStateList::iterator resp_dit;
-			PassiveTimer resp_ptTimeout;
-			Trigger resp_trTimeout;
+			DelayTimer resp_Delay;
 			bool resp_state;
 			bool resp_invert;
-			bool resp_real;
-			bool resp_init;
+			ost::AtomicCounter numreply;
+			ost::AtomicCounter prev_numreply;
 			bool ask_every_reg;
 			UniSetTypes::ObjectId mode_id;
 			IOController::AIOStateList::iterator mode_ait;

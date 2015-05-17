@@ -175,11 +175,6 @@ void RTUExchange::poll()
 			uniset_mutex_lock l(pollMutex, 300);
 			pollActivated = false;
 			mb = initMB(false);
-			if( !mb )
-			{
-				for( MBExchange::RTUDeviceMap::iterator it=rmap.begin(); it!=rmap.end(); ++it )
-					it->second->resp_real = false;
-			}
 		}
 
 		if( !checkProcActive() )
@@ -236,18 +231,14 @@ void RTUExchange::poll()
 					mb->cleanupChannel();
 
 				d->rtu->poll(mbrtu);
-				d->resp_real = true;
+				d->numreply +=1;
 			}
 			catch( ModbusRTU::mbException& ex )
 			{ 
-				if( d->resp_real )
+				if( dlog.debugging(Debug::LEVEL3) )
 				{
-					if( dlog.debugging(Debug::LEVEL3) )
-					{
-  						dlog[Debug::CRIT] << myname << "(poll): FAILED ask addr=" << ModbusRTU::addr2str(d->mbaddr)
-							<< " -> " << ex << endl;
-					}					
-					d->resp_real = false;
+					dlog[Debug::CRIT] << myname << "(poll): FAILED ask addr=" << ModbusRTU::addr2str(d->mbaddr)
+						<< " -> " << ex << endl;
 				}
 			}
 		}
@@ -257,7 +248,6 @@ void RTUExchange::poll()
 				dlog[Debug::LEVEL3] << myname << "(poll): ask addr=" << ModbusRTU::addr2str(d->mbaddr) 
 				<< " regs=" << d->regmap.size() << endl;
 
-			d->resp_real = false;
 			for( RTUExchange::RegMap::iterator it=d->regmap.begin(); it!=d->regmap.end(); ++it )
 			{
 				try
@@ -267,22 +257,18 @@ void RTUExchange::poll()
 						if( rs_pre_clean )
 							mb->cleanupChannel();
 						if( pollRTU(d,it) )
-							d->resp_real = true;
+							d->numreply += 1;
 					}
 				}
 				catch( ModbusRTU::mbException& ex )
 				{ 
-//					if( d->resp_real )
-//					{
-						if( dlog.debugging(Debug::LEVEL3) )
-						{
-							 dlog[Debug::LEVEL3] << myname << "(poll): FAILED ask addr=" << ModbusRTU::addr2str(d->mbaddr)
-								<< " reg=" << ModbusRTU::dat2str(it->second->mbreg)
-								<< " for sensors: "; print_plist(dlog(Debug::LEVEL3), it->second->slst);
-								dlog(Debug::LEVEL3) << " err: " << ex << endl;
-						}
-				//		d->resp_real = false;
-//					}
+					if( dlog.debugging(Debug::LEVEL3) )
+					{
+						 dlog[Debug::LEVEL3] << myname << "(poll): FAILED ask addr=" << ModbusRTU::addr2str(d->mbaddr)
+							<< " reg=" << ModbusRTU::dat2str(it->second->mbreg)
+							<< " for sensors: "; print_plist(dlog(Debug::LEVEL3), it->second->slst);
+							dlog(Debug::LEVEL3) << " err: " << ex << endl;
+					}
 				}
 
 				if( it==d->regmap.end() )
@@ -293,7 +279,7 @@ void RTUExchange::poll()
 			}
 		}
 
-		if( d->resp_real )
+		if( d->numreply != d->prev_numreply )
 			allNotRespond = false;
 	}
 

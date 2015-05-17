@@ -452,7 +452,7 @@ std::ostream& operator<<( std::ostream& os, MBExchange::RTUDevice& d )
   	os 	<< "addr=" << ModbusRTU::addr2str(d.mbaddr)
   		<< " type=" << d.dtype
   		<< " respond_id=" << d.resp_id
-  		<< " respond_timeout=" << d.resp_ptTimeout.getInterval()
+  		<< " respond_timeout=" << d.resp_Delay.getOffDelay()
   		<< " respond_state=" << d.resp_state
   		<< " respond_invert=" << d.resp_invert
   		<< endl;
@@ -2554,13 +2554,9 @@ bool MBExchange::initDeviceInfo( RTUDeviceMap& m, ModbusRTU::ModbusAddr a, UniXM
     }
  
 	dlog[Debug::INFO] << myname << "(initDeviceInfo): add addr=" << ModbusRTU::addr2str(a) << endl;
-	int tout = it.getPIntProp("timeout",5000);
-	d->second->resp_ptTimeout.setTiming(tout);
+	int tout = it.getPIntProp("timeout",ptTimeout.getInterval());
+	d->second->resp_Delay.set(0,tout);
 	d->second->resp_invert = it.getIntProp("invert");
-//	d->second->no_clean_input = it.getIntProp("no_clean_input");
-	
-//	dlog[Debug::INFO] << myname << "(initDeviceInfo): add " << (*d->second) << endl;
-	
 	return true;
 }
 // -----------------------------------------------------------------------------
@@ -2875,11 +2871,6 @@ void MBExchange::poll()
 			uniset_mutex_lock l(pollMutex, 300);
 			pollActivated = false;
 			mb = initMB(false);
-			if( !mb )
-			{
-				for( MBExchange::RTUDeviceMap::iterator it=rmap.begin(); it!=rmap.end(); ++it )
-					it->second->resp_real = false;
-			}
 		}
 
 		if( !checkProcActive() )
@@ -2915,7 +2906,8 @@ void MBExchange::poll()
 			dlog[Debug::LEVEL3] << myname << "(poll): ask addr=" << ModbusRTU::addr2str(d->mbaddr) 
 				<< " regs=" << d->regmap.size() << endl;
 
-		d->resp_real = false;
+		int prev_numreply = d->numreply;
+
 		for( MBExchange::RegMap::iterator it=d->regmap.begin(); it!=d->regmap.end(); ++it )
 		{
 			if( !checkProcActive() )
@@ -2926,7 +2918,7 @@ void MBExchange::poll()
 				if( d->dtype==MBExchange::dtRTU || d->dtype==MBExchange::dtMTR )
 				{
 					if( pollRTU(d,it) )
-						d->resp_real = true;
+						d->numreply +=1;
 				}
 			}
 			catch( ModbusRTU::mbException& ex )
@@ -2945,12 +2937,9 @@ void MBExchange::poll()
 				// d->resp_real = false;
 				if( ex.err == ModbusRTU::erTimeOut && !d->ask_every_reg )
 					break;
-
-				if( ex.err == ModbusRTU::erNoError )
-					d->resp_real = true;
 			}
 
-			if( d->resp_real )
+			if( d->numreply != prev_numreply )
 				allNotRespond = false;
 			
 			if( it==d->regmap.end() )
@@ -3010,32 +2999,9 @@ void MBExchange::poll()
 bool MBExchange::RTUDevice::checkRespond()
 {
 	bool prev = resp_state;
-
-	if( resp_ptTimeout.getInterval() <= 0 )
-	{
-		resp_state = resp_real;
-		return (prev != resp_state);
-	}
-	
-	if( resp_trTimeout.hi(resp_state && !resp_real) )
-		resp_ptTimeout.reset();
-	
-	if( resp_real )
-		resp_state = true;
-	else if( resp_state && !resp_real && resp_ptTimeout.checkTime() )
-		resp_state = false; 
-	
-	// если ещё не инициализировали значение в SM
-	// то возвращаем true, чтобы оно принудительно сохранилось
-	if( !resp_init )
-	{
-		resp_state = resp_real;
-		resp_init = true;
-		prev = resp_state;
-		return true;
-	}
-
-	return ( prev != resp_state );
+	resp_state = resp_Delay.check( prev_numreply!=numreply );
+	prev_numreply = numreply;
+	return (prev!=resp_state);
 }
 // -----------------------------------------------------------------------------
 void MBExchange::updateRespondSensors()
@@ -3050,15 +3016,15 @@ void MBExchange::updateRespondSensors()
 	{
 		RTUDevice* d(it1->second);
 		
-		if( chanTimeout )
-			it1->second->resp_real = false;
-		
 		if( dlog.debugging(Debug::LEVEL4) )
 		{
 			dlog[Debug::LEVEL4] << myname << ": check respond addr=" << ModbusRTU::addr2str(d->mbaddr)
 				<< " respond_id=" << d->resp_id
-				<< " real=" << d->resp_real
 				<< " state=" << d->resp_state
+				<< " [timeout=" << d->resp_Delay.getOffDelay() 
+				<< " numreply=" << d->numreply
+				<< " prev_numreply=" << d->prev_numreply
+				<< " ]"
 				<< endl;
 		}
 

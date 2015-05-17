@@ -118,6 +118,9 @@ class DelayTimer
 
 		inline bool get(){ return state; }
 
+		inline timeout_t getOffDelay(){ return offDelay; }
+		inline timeout_t getOnDelay(){ return onDelay; }
+
 	protected:
 		PassiveTimer pt;
 		bool prevState;
