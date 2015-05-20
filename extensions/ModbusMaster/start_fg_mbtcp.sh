@@ -9,9 +9,9 @@
 --mbtcp-filter-value 5 \
 --mbtcp-gateway-iaddr localhost \
 --mbtcp-gateway-port 2048 \
---mbtcp-recv-timeout 5000 \
+--mbtcp-recv-timeout 1500 \
 --mbtcp-force-disconnect 1 \
---mbtcp-polltime 3000 \
+--mbtcp-polltime 500 \
 --mbtcp-force-out 1 \
 --dlog-add-levels level4 \
 $*

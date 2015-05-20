@@ -41,13 +41,13 @@ class DelayTimer
 		
 		~DelayTimer(){}
 	
-		inline void set( timeout_t on_msec, timeout_t off_msec )
+		inline void set( timeout_t on_msec, timeout_t off_msec, bool init_state=false )
 		{
 			onDelay = on_msec;
 			offDelay = off_msec;
 			waiting_on = false;
 			waiting_off = false;
-			state = false;
+			state = init_state;
 		}
 		
 		// запустить часы (заново)
@@ -61,6 +61,7 @@ class DelayTimer
 
 		inline bool check( bool st )
 		{
+			prevState = st;
 			if( waiting_off )
 			{
 				if( pt.checkTime() )
@@ -71,10 +72,9 @@ class DelayTimer
 
 					return state;
 				}
-				else if( st != prevState && !st )
-					pt.reset();
-		
-				prevState = st;
+				else if( st )
+					waiting_off = false;
+
 				return state;
 			}
 
@@ -88,16 +88,14 @@ class DelayTimer
 
 					return state;
 				}
-				else if( st != prevState && st )
-					pt.reset();
+				else if( !st )
+					waiting_on = false;
 
-				prevState = st;
 				return state;
 			}
 
 			if( state != st )
 			{
-				prevState = st;
 				if( st )
 				{
 					pt.setTiming(onDelay);
@@ -109,14 +107,21 @@ class DelayTimer
 					waiting_off = true;
 				}
 
+				// на случай если время = 0
 				if( pt.checkTime() )
+				{
+				 	state = st;
 					return st;
+				}
 			}
 
 			return state;
 		}
 
-		inline bool get(){ return state; }
+		inline bool get()
+		{
+			return check(prevState);
+		}
 
 		inline timeout_t getOffDelay(){ return offDelay; }
 		inline timeout_t getOnDelay(){ return onDelay; }

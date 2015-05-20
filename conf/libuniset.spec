@@ -8,7 +8,7 @@
 
 Name: libuniset
 Version: 1.8
-Release: alt8
+Release: alt9
 Summary: UniSet - library for building distributed industrial control systems
 
 License: GPL
@@ -339,6 +339,9 @@ mv -f %buildroot%python_sitelibdir_noarch/* %buildroot%python_sitelibdir/%oname
 
 
 %changelog
+* Tue May 19 2015 Pavel Vainerman <pv@altlinux.ru> 1.8-alt9
+- (DelayTimer): fixed critical bug in DelayTimer (thanks ilyap@etersoft.ru)
+
 * Sun May 17 2015 Pavel Vainerman <pv@altlinux.ru> 1.8-alt8
 - (ModbusMaster): refactoring 'set respond sensor mechanism'
 
@@ -349,7 +352,7 @@ mv -f %buildroot%python_sitelibdir_noarch/* %buildroot%python_sitelibdir/%oname
 - ModbusMaster: fixed bug: unstable timeout...( thank`s ilyap@etersoft.ru)
 
 * Thu Mar 19 2015 Pavel Vainerman <pv@altlinux.ru> 1.8-alt5
-- unetudp: fxied critial bug in "switching channels" (thank`s Alexey Surov)
+- unetudp: fxied critical bug in "switching channels" (thank`s Alexey Surov)
 
 * Fri Mar 13 2015 Pavel Vainerman <pv@altlinux.ru> 1.8-alt4
 - unetudp: minor optimization (thank`s thank`s Alexey Vinogradov)

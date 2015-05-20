@@ -452,7 +452,7 @@ std::ostream& operator<<( std::ostream& os, MBExchange::RTUDevice& d )
   	os 	<< "addr=" << ModbusRTU::addr2str(d.mbaddr)
   		<< " type=" << d.dtype
   		<< " respond_id=" << d.resp_id
-  		<< " respond_timeout=" << d.resp_Delay.getOffDelay()
+  		<< " respond_timeout=" << d.resp_Delay.getOnDelay()
   		<< " respond_state=" << d.resp_state
   		<< " respond_invert=" << d.resp_invert
   		<< endl;
@@ -2555,7 +2555,7 @@ bool MBExchange::initDeviceInfo( RTUDeviceMap& m, ModbusRTU::ModbusAddr a, UniXM
  
 	dlog[Debug::INFO] << myname << "(initDeviceInfo): add addr=" << ModbusRTU::addr2str(a) << endl;
 	int tout = it.getPIntProp("timeout",ptTimeout.getInterval());
-	d->second->resp_Delay.set(0,tout);
+	d->second->resp_Delay.set(tout,0);
 	d->second->resp_invert = it.getIntProp("invert");
 	return true;
 }
@@ -2906,7 +2906,7 @@ void MBExchange::poll()
 			dlog[Debug::LEVEL3] << myname << "(poll): ask addr=" << ModbusRTU::addr2str(d->mbaddr) 
 				<< " regs=" << d->regmap.size() << endl;
 
-		int prev_numreply = d->numreply;
+		d->prev_numreply = d->numreply;
 
 		for( MBExchange::RegMap::iterator it=d->regmap.begin(); it!=d->regmap.end(); ++it )
 		{
@@ -2918,7 +2918,10 @@ void MBExchange::poll()
 				if( d->dtype==MBExchange::dtRTU || d->dtype==MBExchange::dtMTR )
 				{
 					if( pollRTU(d,it) )
+					{
 						d->numreply +=1;
+						allNotRespond = false;
+					}
 				}
 			}
 			catch( ModbusRTU::mbException& ex )
@@ -2939,9 +2942,6 @@ void MBExchange::poll()
 					break;
 			}
 
-			if( d->numreply != prev_numreply )
-				allNotRespond = false;
-			
 			if( it==d->regmap.end() )
 				break;
 
@@ -2953,12 +2953,15 @@ void MBExchange::poll()
 			poll_count++;
 	}
 
+
 	if( stat_time > 0 && ptStatistic.checkTime() )
 	{
 		cout << endl << "(poll statistic): number of calls is " << poll_count << " (poll time: " << stat_time << " sec)" << endl << endl;
 		ptStatistic.reset();
 		poll_count=0;
 	}
+
+
 
 	{
 		uniset_mutex_lock l(pollMutex,120);
@@ -2999,8 +3002,20 @@ void MBExchange::poll()
 bool MBExchange::RTUDevice::checkRespond()
 {
 	bool prev = resp_state;
-	resp_state = resp_Delay.check( prev_numreply!=numreply );
-	prev_numreply = numreply;
+	resp_state = !resp_Delay.check( prev_numreply==numreply );
+
+	if( dlog.debugging(Debug::LEVEL4) )
+	{
+		dlog[Debug::LEVEL4] << "(checkRespond): addr=" << ModbusRTU::addr2str(mbaddr)
+			<< " respond_id=" << resp_id
+			<< " state=" << resp_state
+			<< " [timeout=" << resp_Delay.getOnDelay()
+			<< " numreply=" << numreply
+			<< " prev_numreply=" << prev_numreply
+			<< " ]"
+			<< endl;
+	}
+
 	return (prev!=resp_state);
 }
 // -----------------------------------------------------------------------------
@@ -3016,23 +3031,20 @@ void MBExchange::updateRespondSensors()
 	{
 		RTUDevice* d(it1->second);
 		
-		if( dlog.debugging(Debug::LEVEL4) )
-		{
-			dlog[Debug::LEVEL4] << myname << ": check respond addr=" << ModbusRTU::addr2str(d->mbaddr)
-				<< " respond_id=" << d->resp_id
-				<< " state=" << d->resp_state
-				<< " [timeout=" << d->resp_Delay.getOffDelay() 
-				<< " numreply=" << d->numreply
-				<< " prev_numreply=" << d->prev_numreply
-				<< " ]"
-				<< endl;
-		}
-
-		if( d->checkRespond() && d->resp_id != DefaultObjectId  )
+		if( d->resp_id != DefaultObjectId && d->checkRespond() )
 		{
 			try
 			{
 				bool set = d->resp_invert ? !d->resp_state : d->resp_state;
+		
+				if( dlog.debugging(Debug::LEVEL4) )
+					dlog[Debug::LEVEL4] << myname << ": SAVE new respond state addr=" << ModbusRTU::addr2str(d->mbaddr)
+					<< " set=" << set
+					<< " [ invert=" << d->resp_invert
+					<< "  resp_state=" << d->resp_state 
+					<< " timeout=" << d->resp_Delay.getOnDelay()
+					<< endl;
+
 				shm->localSaveState(d->resp_dit,d->resp_id,set,getId());
 			}
 			catch( Exception& ex )
