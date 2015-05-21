@@ -8,7 +8,7 @@
 
 Name: libuniset
 Version: 1.8
-Release: alt9
+Release: alt10
 Summary: UniSet - library for building distributed industrial control systems
 
 License: GPL
@@ -339,6 +339,9 @@ mv -f %buildroot%python_sitelibdir_noarch/* %buildroot%python_sitelibdir/%oname
 
 
 %changelog
+* Thu May 21 2015 Pavel Vainerman <pv@altlinux.ru> 1.8-alt10
+- (ModbusMaster): add init timer for respond sensor 
+
 * Tue May 19 2015 Pavel Vainerman <pv@altlinux.ru> 1.8-alt9
 - (DelayTimer): fixed critical bug in DelayTimer (thanks ilyap@etersoft.ru)
 

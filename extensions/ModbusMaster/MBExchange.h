@@ -163,6 +163,7 @@ class MBExchange:
 			UniSetTypes::ObjectId resp_id;
 			IOController::DIOStateList::iterator resp_dit;
 			DelayTimer resp_Delay;
+			PassiveTimer resp_ptInit;
 			bool resp_state;
 			bool resp_invert;
 			ost::AtomicCounter numreply;
