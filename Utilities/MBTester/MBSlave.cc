@@ -6,6 +6,9 @@
 #include "UniSetTypes.h"
 #include "MBSlave.h"
 #include "uniset-config.h"
+#ifndef PACKAGE_URL
+#define PACKAGE_URL "http://wiki.etersoft.ru/UniSet"
+#endif
 // -------------------------------------------------------------------------
 #ifndef PACKAGE_URL
 #define PACKAGE_URL "http://git.etersoft.ru/projects/?p=asu/uniset.git;a=summary"
