@@ -1977,6 +1977,7 @@ bool MBExchange::initRSProperty( RSProperty& p, UniXML_iterator& it )
 	// тогда заносим его в отдельный список
 	if( p.t_ai != DefaultObjectId )
 	{
+		dlog[Debug::WARN] << "(initRSProperty): ADD THRESHOLD: " << p << endl;
 		thrlist.push_back(p);
 		return true;
 	}
@@ -2163,6 +2164,9 @@ bool MBExchange::initItem( UniXML_iterator& it )
 	RSProperty p;
 	if( !initRSProperty(p,it) )
 		return false;
+
+	if( p.t_ai != DefaultObjectId )  // т.к. в список iomap вносить не нужно
+		return true;
 
 	string addr = IOBase::initProp(it,"mbaddr",prop_prefix,false);
 	if( addr.empty() )
@@ -2467,7 +2471,7 @@ std::ostream& operator<<( std::ostream& os, const MBExchange::DeviceType& dt )
 // -----------------------------------------------------------------------------
 std::ostream& operator<<( std::ostream& os, const MBExchange::RSProperty& p )
 {
-	os 	<< " (" << ModbusRTU::dat2str(p.reg->mbreg) << ")"
+	os 	<< " (" << (p.reg ? ModbusRTU::dat2str(p.reg->mbreg) : "") << ")"
 		<< " sid=" << p.si.id
 		<< " stype=" << p.stype
 	 	<< " nbit=" << p.nbit
@@ -2984,7 +2988,6 @@ void MBExchange::poll()
 	{
 		if( !checkProcActive() )
 			return;
-        
 		IOBase::processingThreshold(&(*t),shm,force);
 	}
 	

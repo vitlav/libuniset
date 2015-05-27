@@ -409,7 +409,6 @@ void IOBase::processingThreshold( IOBase* it, SMInterface* shm, bool force )
 	long val = shm->localGetValue(it->ait,it->t_ai);
 	bool set = it->value ? true : false;
 
-//	cout  << "val=" << val << " set=" << set << endl;
 	// Проверка нижнего предела
 	// значение должно быть меньше lowLimit-чуствительность
 	if (it->ti.inverse)
@@ -427,7 +426,6 @@ void IOBase::processingThreshold( IOBase* it, SMInterface* shm, bool force )
 			set = true;
 	}
 
-//	cout  << "thresh: set=" << set << endl;
 	processingAsDI(it,set,shm,force);
 }
 // -----------------------------------------------------------------------------
@@ -479,7 +477,7 @@ bool IOBase::initItem( IOBase* b, UniXML_iterator& it, SMInterface* shm, const s
 	if( sid == DefaultObjectId )
 	{
 		if( dlog )
-			dlog[Debug::CRIT] << myname << "(readItem): (" << DefaultObjectId << ") Не удалось получить ID для датчика: "
+			(*dlog)[Debug::CRIT] << myname << "(readItem): (" << DefaultObjectId << ") Не удалось получить ID для датчика: "
 						<< sname << endl;
 		return false;
 	}
@@ -510,7 +508,7 @@ bool IOBase::initItem( IOBase* b, UniXML_iterator& it, SMInterface* shm, const s
 	if( b->stype == UniversalIO::UnknownIOType )
 	{
 		if( dlog )
-			dlog[Debug::CRIT] << myname << "(IOBase::readItem): неизвестный iotype=: " 
+			(*dlog)[Debug::CRIT] << myname << "(IOBase::readItem): неизвестный iotype=: " 
 				<< it.getProp("iotype") << " для " << sname << endl;
 		return false;
 	}
@@ -538,7 +536,7 @@ bool IOBase::initItem( IOBase* b, UniXML_iterator& it, SMInterface* shm, const s
 		if( b->d_id == DefaultObjectId )
 		{
 			if( dlog )
-				dlog[Debug::CRIT] << myname << "(IOBase::readItem): sensor='" 
+				(*dlog)[Debug::CRIT] << myname << "(IOBase::readItem): sensor='" 
 					<< it.getProp("name") << "' err: "
 					<< " Unknown SensorID for depend='"  << d_txt
 					<< endl;
@@ -620,7 +618,7 @@ bool IOBase::initItem( IOBase* b, UniXML_iterator& it, SMInterface* shm, const s
 			if( b->t_ai == DefaultObjectId )
 			{
 				if( dlog )
-					dlog[Debug::CRIT] << myname << "(IOBase::readItem): unknown ID for threshold_ai "
+					(*dlog)[Debug::CRIT] << myname << "(IOBase::readItem): unknown ID for threshold_aid "
 						<< tai << endl;
 				return false;
 			}
